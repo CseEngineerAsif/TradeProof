@@ -1,0 +1,10 @@
+.dart_tool/
+build/
+.flutter-plugins*
+.packages
+android/local.properties
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+node_modules/
+.idea/
+*.iml

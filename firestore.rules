@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function role() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+    match /workers/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn();
+    }
+    // Only trainers can issue credentials or run assessments.
+    match /credentials/{id} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && role() == 'trainer';
+    }
+    match /assessments/{id} {
+      allow read: if signedIn();
+      allow write: if signedIn() && role() == 'trainer';
+    }
+    // Only employers can post jobs.
+    match /jobs/{id} {
+      allow read: if signedIn();
+      allow write: if signedIn() && role() == 'employer';
+    }
+    match /portfolio/{id}    { allow read, write: if signedIn(); }
+    match /safety/{id}       { allow read, write: if signedIn(); }
+    match /applications/{id} { allow read, write: if signedIn(); }
+    match /reviews/{id}      { allow read, write: if signedIn(); }
+  }
+}
