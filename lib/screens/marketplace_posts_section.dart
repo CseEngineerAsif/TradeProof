@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
@@ -16,12 +15,7 @@ class MarketplacePostsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Listen for published posts and show the correct loading or error state.
-    if (Firebase.apps.isEmpty) {
-      return _notice(
-        'Sign in to browse posts from connected TradeProof accounts.',
-      );
-    }
-    if (FirebaseAuth.instance.currentUser == null) {
+    if (!ConnectionService.isSignedIn) {
       return _notice(
         'Sign in to browse posts from connected TradeProof accounts.',
       );
@@ -40,7 +34,7 @@ class MarketplacePostsSection extends StatelessWidget {
             child: Center(child: CircularProgressIndicator()),
           );
         }
-        final currentUid = FirebaseAuth.instance.currentUser?.uid;
+        final currentUid = ConnectionService.currentUserId;
         final posts = snapshot.data!;
         final otherPosts = posts.where((post) => post.ownerUid != currentUid);
         final ownPosts = posts.where((post) => post.ownerUid == currentUid);

@@ -1,6 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../services/connection_service.dart';
+import 'course_checkout_page.dart';
+
 typedef AddCompletedProjectCallback =
     Future<void> Function({
       required String title,
@@ -101,17 +104,36 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
 
   String get _displayName {
     // Use the signed-in name, or a sample name in demo mode.
-    if (widget.isDemo) return 'MD. ASIF HASAN';
+    if (widget.isDemo) {
+      return ConnectionService.currentUserName?.toUpperCase() ??
+          'MD. ASIF HASAN';
+    }
     final name = FirebaseAuth.instance.currentUser?.displayName?.trim();
     return name == null || name.isEmpty ? 'MD. ASIF HASAN' : name;
   }
 
   void _showActionMessage(String action) {
+    final message = widget.isDemo
+        ? '$action is only simulated in this demo; no money is transferred.'
+        : '$action is not available in this prototype.';
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text('$action is not connected in this demo yet.')),
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _enrollInCourse() async {
+    try {
+      await openCourseCheckoutForTitle(
+        context,
+        'Electrical Installation & Safety',
       );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    }
   }
 
   Future<void> _openTracking(_AppliedJob job) async {
@@ -154,7 +176,7 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
             _FinanceSummaryCard(
               displayName: _displayName,
               onWithdraw: () => _showActionMessage('Withdraw'),
-              onEnroll: () => _showActionMessage('Course enrollment'),
+              onEnroll: _enrollInCourse,
             ),
             const SizedBox(height: 12),
             _LiveTrackingBanner(activeJobs: activeJobs),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/connection_service.dart';
+
 // This page shows a worker's identity, match score, and profile details.
 class WorkerProfilePage extends StatefulWidget {
   const WorkerProfilePage({
@@ -30,6 +32,26 @@ class _WorkerProfilePageState extends State<WorkerProfilePage> {
   static const _border = Color(0xFFDCE4EC);
 
   int _selectedSection = 0;
+
+  Future<void> _contactWorker() async {
+    try {
+      await ConnectionService.requestPublishedPostByTitle(
+        title: widget.name,
+        type: 'service',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Request sent to ${widget.name}.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    }
+  }
 
   // Creates example projects that match the worker's trade.
   List<_PortfolioItem> get _projects {
@@ -205,15 +227,7 @@ class _WorkerProfilePageState extends State<WorkerProfilePage> {
             width: double.infinity,
             height: 42,
             child: FilledButton.icon(
-              onPressed: () => ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Messaging is not connected in this demo yet.',
-                    ),
-                  ),
-                ),
+              onPressed: _contactWorker,
               icon: const Icon(Icons.chat_bubble_outline, size: 17),
               label: const Text(
                 'Contact worker',

@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
@@ -14,7 +13,7 @@ class ConnectionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Ask the user to sign in before showing private connection details.
-    if (Firebase.apps.isEmpty) {
+    if (!ConnectionService.isSignedIn) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
@@ -26,19 +25,7 @@ class ConnectionsPage extends StatelessWidget {
         ),
       );
     }
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Sign in with a registered account to view requests and messages.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFF64748B)),
-          ),
-        ),
-      );
-    }
+    final currentUid = ConnectionService.currentUserId!;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
@@ -59,11 +46,11 @@ class ConnectionsPage extends StatelessWidget {
         const SizedBox(height: 18),
         const _SectionHeader(title: 'Incoming requests'),
         const SizedBox(height: 8),
-        _RequestList(incoming: true, currentUid: user.uid),
+        _RequestList(incoming: true, currentUid: currentUid),
         const SizedBox(height: 20),
         const _SectionHeader(title: 'Requests you sent'),
         const SizedBox(height: 8),
-        _RequestList(incoming: false, currentUid: user.uid),
+        _RequestList(incoming: false, currentUid: currentUid),
       ],
     );
   }
@@ -77,7 +64,7 @@ class ConnectionRequestsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (Firebase.apps.isEmpty || FirebaseAuth.instance.currentUser == null) {
+    if (!ConnectionService.isSignedIn) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
@@ -108,7 +95,7 @@ class ConnectionRequestsPage extends StatelessWidget {
         const SizedBox(height: 14),
         _RequestList(
           incoming: incoming,
-          currentUid: FirebaseAuth.instance.currentUser!.uid,
+          currentUid: ConnectionService.currentUserId!,
         ),
       ],
     );
@@ -413,7 +400,7 @@ class _ConversationPageState extends State<_ConversationPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    final currentUid = ConnectionService.currentUserId;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.request.otherPartyName(currentUid ?? '')),

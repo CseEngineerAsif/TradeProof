@@ -27,12 +27,9 @@ class _AuthenticatedShellState extends State<AuthenticatedShell> {
   @override
   void initState() {
     super.initState();
-    // Create a marketplace profile after a real user opens the app.
-    if (!widget.isDemo) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _ensureMarketplaceProfile();
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureMarketplaceProfile();
+    });
   }
 
   // Makes sure the signed-in tradesperson can appear in the marketplace.
@@ -150,6 +147,7 @@ class _ProfileTab extends StatelessWidget {
   // Signs out a real user or exits the demo profile.
   Future<void> _signOut(BuildContext context) async {
     if (isDemo) {
+      ConnectionService.endDemoSession();
       Navigator.of(context).pushNamedAndRemoveUntil('/dashboard', (_) => false);
       return;
     }
@@ -181,9 +179,13 @@ class _ProfileTab extends StatelessWidget {
     final user = isDemo ? null : FirebaseAuth.instance.currentUser;
     final displayName = user?.displayName?.trim().isNotEmpty == true
         ? user!.displayName!.trim()
-        : 'MD. ASIF HASAN';
-    final email = user?.email ?? 'asif.hasan@tradeproof.com';
-    final profileId = user?.uid ?? 'TP-BD-884920';
+        : ConnectionService.currentUserName ?? 'MD. ASIF HASAN';
+    final email =
+        user?.email ??
+        ConnectionService.currentUserEmail ??
+        'asif.hasan@tradeproof.com';
+    final profileId =
+        user?.uid ?? ConnectionService.currentUserId ?? 'TP-BD-884920';
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FA),
       body: ListView(

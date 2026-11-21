@@ -83,7 +83,7 @@ service cloud.firestore {
         && ((!exists(
           /databases/$(database)/documents/connection_requests/$(requestId)
         )
-          && requestId.startsWith(request.auth.uid + '-'))
+          && requestId.matches(request.auth.uid + '-.*'))
           || resource.data.ownerUid == request.auth.uid
           || resource.data.requesterUid == request.auth.uid);
       allow list: if signedIn()

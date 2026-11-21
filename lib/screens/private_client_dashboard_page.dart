@@ -188,13 +188,6 @@ class _PrivateClientDashboardPageState
   }
 
   Widget _buildConnectionSummary() {
-    if (widget.isDemo) {
-      return _emptyState(
-        icon: Icons.account_circle_outlined,
-        title: 'Sign in to sync connections',
-        subtitle: 'Requests and accepted courses are stored with your account.',
-      );
-    }
     return StreamBuilder<List<ConnectionRequest>>(
       stream: ConnectionService.watchRequests(incoming: false),
       builder: (context, snapshot) {
@@ -413,9 +406,13 @@ class _PrivateClientDashboardPageState
     final displayName = user?.displayName?.trim().isNotEmpty == true
         ? user!.displayName!.trim()
         : widget.isDemo
-        ? 'Guest User'
+        ? ConnectionService.currentUserName ?? 'Guest User'
         : 'TradeProof User';
-    final email = user?.email ?? (widget.isDemo ? 'Demo account' : '');
+    final email =
+        user?.email ??
+        (widget.isDemo
+            ? ConnectionService.currentUserEmail ?? 'Demo account'
+            : '');
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
@@ -779,6 +776,7 @@ class _PrivateClientDashboardPageState
   // Signs out the user or returns from the demo account.
   Future<void> _signOut(BuildContext context) async {
     if (widget.isDemo) {
+      ConnectionService.endDemoSession();
       Navigator.of(context).pushNamedAndRemoveUntil('/dashboard', (_) => false);
       return;
     }

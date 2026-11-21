@@ -545,9 +545,13 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
     final displayName = user?.displayName?.trim().isNotEmpty == true
         ? user!.displayName!.trim()
         : widget.isDemo
-        ? 'Trainer Demo'
+        ? ConnectionService.currentUserName ?? 'Trainer Demo'
         : 'Trainer Account';
-    final email = user?.email ?? (widget.isDemo ? 'Demo trainer account' : '');
+    final email =
+        user?.email ??
+        (widget.isDemo
+            ? ConnectionService.currentUserEmail ?? 'Demo trainer account'
+            : '');
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
@@ -890,6 +894,7 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
   // Signs out the user or exits the sample account.
   Future<void> _signOut(BuildContext context) async {
     if (widget.isDemo) {
+      ConnectionService.endDemoSession();
       Navigator.of(context).pushNamedAndRemoveUntil('/dashboard', (_) => false);
       return;
     }

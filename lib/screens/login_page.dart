@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../services/connection_service.dart';
 import 'employer_dashboard_page.dart';
 import 'private_client_dashboard_page.dart';
 import 'trainer_dashboard_page.dart';
@@ -74,6 +75,7 @@ class _LoginPageState extends State<LoginPage> {
 
   // Opens a sample account without creating or signing into a real account.
   void _continueAsDemo(String role) {
+    ConnectionService.beginDemoSession(role);
     final Widget page;
     switch (role) {
       case 'Employer':
