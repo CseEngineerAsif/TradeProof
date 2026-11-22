@@ -6,5 +6,6 @@ class EmployerConnectionsTab extends StatelessWidget {
   const EmployerConnectionsTab({super.key});
 
   @override
-  Widget build(BuildContext context) => const ConnectionsPage();
+  Widget build(BuildContext context) =>
+      const ConnectionsPage(employerView: true);
 }

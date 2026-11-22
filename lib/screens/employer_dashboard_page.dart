@@ -40,17 +40,17 @@ class _EmployerDashboardPageState extends State<EmployerDashboardPage> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       EmployerHomeTab(onSearchWorkers: _searchWorkers),
-      EmployerDashboardTab(
-        onSearchWorkers: () => _openTab(2),
-        onOpenJobs: () => _openTab(3),
-        onOpenConnections: () => _openTab(4),
-      ),
+      const EmployerJobsTab(),
       EmployerWorkerSearchTab(
         initialQuery: _workerSearch,
         onQueryChanged: _updateWorkerSearch,
       ),
-      EmployerJobsTab(),
       const EmployerConnectionsTab(),
+      EmployerDashboardTab(
+        onSearchWorkers: () => _openTab(2),
+        onOpenJobs: () => _openTab(1),
+        onOpenConnections: () => _openTab(3),
+      ),
       EmployerProfileTab(isDemo: widget.isDemo),
     ];
 
@@ -75,19 +75,14 @@ class _EmployerDashboardPageState extends State<EmployerDashboardPage> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
-            label: 'Overview',
+            icon: Icon(Icons.work_outline),
+            activeIcon: Icon(Icons.work),
+            label: 'Jobs',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.search),
             activeIcon: Icon(Icons.manage_search),
-            label: 'Find workers',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.work_outline),
-            activeIcon: Icon(Icons.work),
-            label: 'Jobs',
+            label: 'Search',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.forum_outlined),
@@ -95,9 +90,14 @@ class _EmployerDashboardPageState extends State<EmployerDashboardPage> {
             label: 'Connections',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.business_outlined),
-            activeIcon: Icon(Icons.business),
-            label: 'Company',
+            icon: Icon(Icons.dashboard_outlined),
+            activeIcon: Icon(Icons.dashboard),
+            label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profile',
           ),
         ],
       ),

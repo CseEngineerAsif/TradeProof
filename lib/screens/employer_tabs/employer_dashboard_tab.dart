@@ -59,7 +59,7 @@ class EmployerDashboardTab extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(14, 18, 14, 24),
               children: [
                 const Text(
-                  'Employer overview',
+                  'Hiring overview',
                   style: TextStyle(
                     color: _employerNavy,
                     fontSize: 21,
@@ -68,7 +68,7 @@ class EmployerDashboardTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 const Text(
-                  'Live activity from your TradeProof account.',
+                  'Your hiring activity at a glance.',
                   style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
                 ),
                 const SizedBox(height: 18),
@@ -92,9 +92,9 @@ class EmployerDashboardTab extends StatelessWidget {
                     const SizedBox(width: 9),
                     Expanded(
                       child: _MetricCard(
-                        label: 'Total requests',
+                        label: 'Incoming requests',
                         value: '${requests.length}',
-                        icon: Icons.people_outline,
+                        icon: Icons.inbox_outlined,
                       ),
                     ),
                   ],
@@ -102,27 +102,28 @@ class EmployerDashboardTab extends StatelessWidget {
                 const SizedBox(height: 18),
                 _OverviewAction(
                   icon: Icons.search,
-                  title: 'Find verified workers',
-                  subtitle: 'Browse worker profiles and contact them.',
+                  title: 'Find workers',
+                  subtitle: 'Review profiles and contact qualified candidates.',
                   onTap: onSearchWorkers,
                 ),
                 const SizedBox(height: 9),
                 _OverviewAction(
                   icon: Icons.post_add_outlined,
-                  title: 'Manage job posts',
-                  subtitle: 'Publish an opportunity and review its status.',
+                  title: 'Manage jobs',
+                  subtitle: 'Post roles and track their status.',
                   onTap: onOpenJobs,
                 ),
                 const SizedBox(height: 9),
                 _OverviewAction(
                   icon: Icons.forum_outlined,
-                  title: 'Review requests and messages',
-                  subtitle: 'Respond to requests and continue accepted chats.',
+                  title: 'Applications & messages',
+                  subtitle:
+                      'Review incoming requests and continue conversations.',
                   onTap: onOpenConnections,
                 ),
                 const SizedBox(height: 18),
                 const Text(
-                  'Recent job posts',
+                  'Recent jobs',
                   style: TextStyle(
                     color: _employerNavy,
                     fontSize: 14,

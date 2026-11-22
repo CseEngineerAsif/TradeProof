@@ -8,7 +8,14 @@ const _connectionTeal = Color(0xFF00999D);
 
 // Shows messages and connection requests for the signed-in user.
 class ConnectionsPage extends StatelessWidget {
-  const ConnectionsPage({super.key});
+  const ConnectionsPage({
+    super.key,
+    this.employerView = false,
+    this.trainerView = false,
+  });
+
+  final bool employerView;
+  final bool trainerView;
 
   @override
   Widget build(BuildContext context) {
@@ -30,8 +37,12 @@ class ConnectionsPage extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
       children: [
-        const Text(
-          'Messages & requests',
+        Text(
+          employerView
+              ? 'Applications & messages'
+              : trainerView
+              ? 'Learner enrollments & messages'
+              : 'Messages & requests',
           style: TextStyle(
             color: _connectionNavy,
             fontSize: 20,
@@ -39,16 +50,30 @@ class ConnectionsPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        const Text(
-          'Review requests from other accounts and continue accepted work here.',
-          style: TextStyle(color: Color(0xFF64748B), fontSize: 11),
+        Text(
+          employerView
+              ? 'Review worker requests and manage conversations.'
+              : trainerView
+              ? 'Review course enrollments and message accepted learners.'
+              : 'Review requests and continue accepted conversations.',
+          style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
         ),
         const SizedBox(height: 18),
-        const _SectionHeader(title: 'Incoming requests'),
+        _SectionHeader(
+          title: employerView
+              ? 'Incoming applications & requests'
+              : trainerView
+              ? 'Course enrollments'
+              : 'Incoming requests',
+        ),
         const SizedBox(height: 8),
         _RequestList(incoming: true, currentUid: currentUid),
         const SizedBox(height: 20),
-        const _SectionHeader(title: 'Requests you sent'),
+        _SectionHeader(
+          title: employerView || trainerView
+              ? 'Requests sent'
+              : 'Requests you sent',
+        ),
         const SizedBox(height: 8),
         _RequestList(incoming: false, currentUid: currentUid),
       ],

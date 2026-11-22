@@ -10,7 +10,7 @@ const _teal = Color(0xFF00999D);
 const _navy = Color(0xFF10243B);
 const _muted = Color(0xFF64748B);
 
-// This dashboard groups the trainer's overview, course list, learners, and profile.
+// Groups the trainer's courses, learners, connections, and account details.
 class TrainerDashboardPage extends StatefulWidget {
   const TrainerDashboardPage({super.key, this.isDemo = false});
 
@@ -20,7 +20,7 @@ class TrainerDashboardPage extends StatefulWidget {
   State<TrainerDashboardPage> createState() => _TrainerDashboardPageState();
 }
 
-// The selected tab and trainer data are stored here.
+// Owns trainer tab selection, course forms, and search filters.
 class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
   static const _teal = Color(0xFF00999D);
   static const _navy = Color(0xFF10243B);
@@ -33,67 +33,13 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
   final _courseCategoryController = TextEditingController();
   final _courseDurationController = TextEditingController();
   final _courseFeeController = TextEditingController();
+  final _courseSearchController = TextEditingController();
   final _learnerSearchController = TextEditingController();
-
-  final List<_TrainingCourse> _courses = [
-    _TrainingCourse(
-      title: 'Electrical Installation & Safety',
-      category: 'Electrical',
-      duration: '6 weeks',
-      fee: '৳2,500',
-      learners: 18,
-      status: 'ENROLLING',
-      icon: Icons.electrical_services_outlined,
-    ),
-    _TrainingCourse(
-      title: 'Solar PV Installation Workshop',
-      category: 'Solar & Tech',
-      duration: '3 weeks',
-      fee: '৳2,800',
-      learners: 12,
-      status: 'ENROLLING',
-      icon: Icons.solar_power_outlined,
-    ),
-    _TrainingCourse(
-      title: 'Workplace Safety Assessment',
-      category: 'Safety',
-      duration: '2 days',
-      fee: '৳1,200',
-      learners: 24,
-      status: 'ACTIVE',
-      icon: Icons.health_and_safety_outlined,
-    ),
-  ];
-
-  final List<_Learner> _learners = [
-    _Learner(
-      name: 'Arif Hossain',
-      course: 'Electrical Installation & Safety',
-      progress: 82,
-      status: 'Ready for assessment',
-    ),
-    _Learner(
-      name: 'Nusrat Jahan',
-      course: 'Solar PV Installation Workshop',
-      progress: 64,
-      status: 'In progress',
-    ),
-    _Learner(
-      name: 'Tanvir Ahmed',
-      course: 'Electrical Installation & Safety',
-      progress: 100,
-      status: 'Assessment pending',
-    ),
-    _Learner(
-      name: 'Sadia Rahman',
-      course: 'Workplace Safety Assessment',
-      progress: 100,
-      status: 'Certified',
-    ),
-  ];
 
   int _selectedIndex = 0;
   bool _isCreatingCourse = false;
+  bool _isSavingCourse = false;
+  String _courseQuery = '';
   String _learnerQuery = '';
 
   @override
@@ -102,19 +48,24 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
     _courseCategoryController.dispose();
     _courseDurationController.dispose();
     _courseFeeController.dispose();
+    _courseSearchController.dispose();
     _learnerSearchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Build each trainer tab and show the selected one.
+    // Keep the trainer's navigation aligned with course and enrollment flows.
     final pages = <Widget>[
-      const DashboardPage(showHeader: false, trainerHome: true),
-      _buildDashboard(),
+      DashboardPage(
+        showHeader: false,
+        trainerHome: true,
+        onEmployerSearch: _searchCourses,
+      ),
       _isCreatingCourse ? _buildCourseForm() : _buildCourses(),
       _buildLearners(),
       _buildMessages(),
+      _buildDashboard(),
       _buildProfile(),
     ];
 
@@ -139,11 +90,6 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.menu_book_outlined),
             activeIcon: Icon(Icons.menu_book),
             label: 'Courses',
@@ -154,9 +100,14 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
             label: 'Learners',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            activeIcon: Icon(Icons.chat_bubble),
-            label: 'Asif',
+            icon: Icon(Icons.forum_outlined),
+            activeIcon: Icon(Icons.forum),
+            label: 'Connections',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_outlined),
+            activeIcon: Icon(Icons.dashboard),
+            label: 'Dashboard',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
@@ -168,160 +119,169 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
     );
   }
 
-  // Builds the trainer summary cards and quick status metrics.
-  // Shows course and learner counts with shortcuts to common tasks.
-  Widget _buildDashboard() {
-    final readyCount = _learners
-        .where((learner) => learner.status == 'Ready for assessment')
-        .length;
-    final pendingCount = _learners
-        .where((learner) => learner.status == 'Assessment pending')
-        .length;
+  void _searchCourses(String query) {
+    setState(() {
+      _courseQuery = query;
+      _courseSearchController.text = query;
+      _isCreatingCourse = false;
+      _selectedIndex = 1;
+    });
+  }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
-      children: [
-        _pageTitle(
-          title: 'Trainer Dashboard',
-          subtitle: 'Your training and assessment overview',
-        ),
-        const SizedBox(height: 17),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                title: 'Active Courses',
-                value: '${_courses.length}',
-                icon: Icons.menu_book_outlined,
-                color: _teal,
-              ),
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: _MetricCard(
-                title: 'My Learners',
-                value: '${_learners.length}',
-                icon: Icons.people_outline,
-                color: const Color(0xFF6754C8),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 9),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                title: 'Assessments',
-                value: '$pendingCount',
-                icon: Icons.fact_check_outlined,
-                color: const Color(0xFFDB8A22),
-              ),
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: _MetricCard(
-                title: 'Ready to assess',
-                value: '$readyCount',
-                icon: Icons.assignment_turned_in_outlined,
-                color: const Color(0xFF008A68),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 45,
-          child: FilledButton.icon(
-            onPressed: _openCourseForm,
-            icon: const Icon(Icons.add, size: 19),
-            label: const Text(
-              'Create a course',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-            ),
-            style: FilledButton.styleFrom(
-              backgroundColor: _teal,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 9),
-        SizedBox(
-          height: 43,
-          child: OutlinedButton.icon(
-            onPressed: () => setState(() => _selectedIndex = 3),
-            icon: const Icon(Icons.fact_check_outlined, size: 18),
-            label: const Text(
-              'Review learners',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _navy,
-              side: const BorderSide(color: _line),
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(child: _sectionTitle('Upcoming assessments')),
-            TextButton(
-              onPressed: () => setState(() => _selectedIndex = 3),
-              child: const Text(
-                'View all',
-                style: TextStyle(color: _teal, fontSize: 11),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 3),
-        ..._learners
-            .where(
-              (learner) =>
-                  learner.status == 'Ready for assessment' ||
-                  learner.status == 'Assessment pending',
-            )
-            .map(
-              (learner) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _LearnerCard(
-                  learner: learner,
-                  onTap: () => _showLearner(learner),
+  // Shows live course and enrollment activity from the shared account system.
+  Widget _buildDashboard() {
+    return StreamBuilder<List<MarketplacePost>>(
+      stream: ConnectionService.watchMyPosts(type: 'course'),
+      builder: (context, coursesSnapshot) {
+        if (coursesSnapshot.hasError) {
+          return _notice('Could not load courses: ${coursesSnapshot.error}');
+        }
+        if (!coursesSnapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return StreamBuilder<List<ConnectionRequest>>(
+          stream: ConnectionService.watchRequests(incoming: true),
+          builder: (context, requestsSnapshot) {
+            if (requestsSnapshot.hasError) {
+              return _notice(
+                'Could not load learner enrollments: ${requestsSnapshot.error}',
+              );
+            }
+            if (!requestsSnapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final courses = coursesSnapshot.data!;
+            final enrollments = requestsSnapshot.data!
+                .where((request) => request.type == 'course')
+                .toList();
+            final pending = enrollments
+                .where((request) => request.status == 'pending')
+                .length;
+            final acceptedLearners = enrollments
+                .where((request) => request.status == 'accepted')
+                .length;
+            final openEnrollments = enrollments
+                .where((request) => request.status != 'rejected')
+                .length;
+            final activeCourses = courses
+                .where((course) => course.status == 'published')
+                .length;
+
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
+              children: [
+                _pageTitle(
+                  title: 'Training overview',
+                  subtitle: 'Courses and learner enrollments at a glance.',
                 ),
-              ),
-            ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(child: _sectionTitle('Your courses')),
-            TextButton(
-              onPressed: () => setState(() => _selectedIndex = 2),
-              child: const Text(
-                'View all',
-                style: TextStyle(color: _teal, fontSize: 11),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 3),
-        ..._courses
-            .take(2)
-            .map(
-              (course) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _CourseCard(
-                  course: course,
-                  onTap: () => _showCourse(course),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _MetricCard(
+                        title: 'Published courses',
+                        value: '$activeCourses',
+                        icon: Icons.menu_book_outlined,
+                        color: _teal,
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: _MetricCard(
+                        title: 'Pending enrollments',
+                        value: '$pending',
+                        icon: Icons.mark_email_unread_outlined,
+                        color: const Color(0xFFDB8A22),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-      ],
+                const SizedBox(height: 9),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _MetricCard(
+                        title: 'Accepted learners',
+                        value: '$acceptedLearners',
+                        icon: Icons.people_outline,
+                        color: const Color(0xFF6754C8),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: _MetricCard(
+                        title: 'Open enrollments',
+                        value: '$openEnrollments',
+                        icon: Icons.groups_outlined,
+                        color: const Color(0xFF008A68),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 45,
+                  child: FilledButton.icon(
+                    onPressed: _openCourseForm,
+                    icon: const Icon(Icons.add, size: 19),
+                    label: const Text(
+                      'Publish a course',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _teal,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 9),
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _selectedIndex = 2),
+                  icon: const Icon(Icons.people_outline, size: 18),
+                  label: const Text('Review enrollments'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _navy,
+                    side: const BorderSide(color: _line),
+                    backgroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(child: _sectionTitle('Recent courses')),
+                    TextButton(
+                      onPressed: () => setState(() => _selectedIndex = 1),
+                      child: const Text('View all'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                if (courses.isEmpty)
+                  _notice(
+                    'Publish your first course to make it available to learners.',
+                  )
+                else
+                  for (final course in courses.take(3))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _CourseCard(
+                        course: course,
+                        onTap: () => _showCourse(course),
+                      ),
+                    ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -331,10 +291,10 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
       children: [
         _pageTitle(
-          title: 'My Courses',
-          subtitle: 'Create and manage your training programs.',
+          title: 'Courses',
+          subtitle: 'Publish and manage your training programs.',
           trailing: IconButton.filled(
-            tooltip: 'Create course',
+            tooltip: 'Publish course',
             onPressed: _openCourseForm,
             style: IconButton.styleFrom(
               backgroundColor: _teal,
@@ -343,111 +303,170 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
             icon: const Icon(Icons.add),
           ),
         ),
-        const SizedBox(height: 16),
-        _SummaryBanner(
-          icon: Icons.menu_book_outlined,
-          title: '${_courses.length} training programs',
-          subtitle: 'Track enrollment and share practical learning plans.',
+        const SizedBox(height: 13),
+        TextField(
+          controller: _courseSearchController,
+          textInputAction: TextInputAction.search,
+          onChanged: (value) => setState(() => _courseQuery = value),
+          decoration: _inputDecoration(hint: 'Search course or trade').copyWith(
+            prefixIcon: const Icon(Icons.search, color: _muted),
+            suffixIcon: _courseQuery.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear search',
+                    onPressed: () {
+                      _courseSearchController.clear();
+                      setState(() => _courseQuery = '');
+                    },
+                    icon: const Icon(Icons.close, size: 18),
+                  ),
+          ),
         ),
         const SizedBox(height: 12),
-        if (_isCreatingCourse) ...[
-          _buildCourseForm(),
-          const SizedBox(height: 10),
-        ],
-        for (final course in _courses)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 9),
-            child: _CourseCard(
-              course: course,
-              onTap: () => _showCourse(course),
-            ),
-          ),
+        StreamBuilder<List<MarketplacePost>>(
+          stream: ConnectionService.watchMyPosts(type: 'course'),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return _notice('Could not load courses: ${snapshot.error}');
+            }
+            if (!snapshot.hasData) {
+              return const Padding(
+                padding: EdgeInsets.all(18),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            final courses = snapshot.data!;
+            final query = _courseQuery.trim().toLowerCase();
+            final visibleCourses = courses.where((course) {
+              return query.isEmpty ||
+                  '${course.title} ${course.category} ${course.description}'
+                      .toLowerCase()
+                      .contains(query);
+            }).toList();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SummaryBanner(
+                  icon: Icons.menu_book_outlined,
+                  title:
+                      '${courses.where((course) => course.status == 'published').length} published courses',
+                  subtitle:
+                      'Your listings are shared with learners on TradeProof.',
+                ),
+                const SizedBox(height: 10),
+                if (visibleCourses.isEmpty)
+                  _notice(
+                    query.isEmpty
+                        ? 'No courses yet. Publish a course to reach learners.'
+                        : 'No courses match "$_courseQuery".',
+                  )
+                else
+                  for (final course in visibleCourses)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 9),
+                      child: _CourseCard(
+                        course: course,
+                        onTap: () => _showCourse(course),
+                      ),
+                    ),
+              ],
+            );
+          },
+        ),
       ],
     );
   }
 
   // Collects the details for a course the trainer wants to publish.
   Widget _buildCourseForm() {
-    return Form(
-      key: _courseFormKey,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: _cardDecoration(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Create training course',
-                    style: TextStyle(
-                      color: _navy,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Close course form',
-                  onPressed: () => setState(() => _isCreatingCourse = false),
-                  icon: const Icon(Icons.close, size: 19),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            _courseField(
-              controller: _courseTitleController,
-              label: 'Course title',
-              hint: 'e.g. Electrical Installation & Safety',
-            ),
-            const SizedBox(height: 10),
-            _courseField(
-              controller: _courseCategoryController,
-              label: 'Trade category',
-              hint: 'e.g. Electrical',
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _courseField(
-                    controller: _courseDurationController,
-                    label: 'Duration',
-                    hint: 'e.g. 4 weeks',
-                  ),
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: _courseField(
-                    controller: _courseFeeController,
-                    label: 'Course fee',
-                    hint: 'e.g. ৳2,000',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 43,
-              child: FilledButton(
-                onPressed: _saveCourse,
-                style: FilledButton.styleFrom(
-                  backgroundColor: _teal,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                ),
-                child: const Text('Add course'),
-              ),
-            ),
-            TextButton(
-              onPressed: () => setState(() => _isCreatingCourse = false),
-              child: const Text('Cancel'),
-            ),
-          ],
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
+      children: [
+        _pageTitle(
+          title: 'Publish a course',
+          subtitle: 'Share your training with learners on TradeProof.',
+          trailing: IconButton(
+            tooltip: 'Close course form',
+            onPressed: _isSavingCourse
+                ? null
+                : () => setState(() => _isCreatingCourse = false),
+            icon: const Icon(Icons.close),
+          ),
         ),
-      ),
+        const SizedBox(height: 14),
+        Form(
+          key: _courseFormKey,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: _cardDecoration(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _courseField(
+                  controller: _courseTitleController,
+                  label: 'Course title',
+                  hint: 'e.g. Electrical Installation & Safety',
+                ),
+                const SizedBox(height: 10),
+                _courseField(
+                  controller: _courseCategoryController,
+                  label: 'Trade category',
+                  hint: 'e.g. Electrical',
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _courseField(
+                        controller: _courseDurationController,
+                        label: 'Duration',
+                        hint: 'e.g. 4 weeks',
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: _courseField(
+                        controller: _courseFeeController,
+                        label: 'Course fee',
+                        hint: 'e.g. ৳2,000',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 43,
+                  child: FilledButton(
+                    onPressed: _isSavingCourse ? null : _saveCourse,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _teal,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                    ),
+                    child: _isSavingCourse
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('Publish course'),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _isSavingCourse
+                      ? null
+                      : () => setState(() => _isCreatingCourse = false),
+                  child: const Text('Cancel'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -465,78 +484,103 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
     );
   }
 
-  // Lists learners and lets the trainer review their progress.
+  // Lists learners whose course enrollments have been accepted.
   Widget _buildLearners() {
-    final query = _learnerQuery.trim().toLowerCase();
-    final visibleLearners = _learners.where((learner) {
-      return query.isEmpty ||
-          learner.name.toLowerCase().contains(query) ||
-          learner.course.toLowerCase().contains(query) ||
-          learner.status.toLowerCase().contains(query);
-    }).toList();
-
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
-      children: [
-        _pageTitle(
-          title: 'My Learners',
-          subtitle: 'Track progress and review competency assessments.',
-        ),
-        const SizedBox(height: 15),
-        TextField(
-          controller: _learnerSearchController,
-          textInputAction: TextInputAction.search,
-          onChanged: (value) => setState(() => _learnerQuery = value),
-          decoration: _inputDecoration(hint: 'Search learner or course')
-              .copyWith(
-                prefixIcon: const Icon(Icons.search, color: _muted),
-                suffixIcon: _learnerQuery.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear search',
-                        onPressed: () {
-                          _learnerSearchController.clear();
-                          setState(() => _learnerQuery = '');
-                        },
-                        icon: const Icon(Icons.close, size: 18),
-                      ),
-              ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          '${visibleLearners.length} ${visibleLearners.length == 1 ? 'learner' : 'learners'}',
-          style: const TextStyle(
-            color: _muted,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 5),
-        for (final learner in visibleLearners)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: _LearnerCard(
-              learner: learner,
-              onTap: () => _showLearner(learner),
+    return StreamBuilder<List<ConnectionRequest>>(
+      stream: ConnectionService.watchRequests(incoming: true),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: _notice('Could not load learners: ${snapshot.error}'),
             ),
-          ),
-        if (visibleLearners.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(top: 36),
-            child: Center(
-              child: Text(
-                'No learners match your search.',
-                style: TextStyle(color: _muted, fontSize: 12),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final query = _learnerQuery.trim().toLowerCase();
+        final learners = snapshot.data!
+            .where(
+              (request) =>
+                  request.type == 'course' && request.status == 'accepted',
+            )
+            .where(
+              (request) =>
+                  query.isEmpty ||
+                  '${request.requesterName} ${request.title}'
+                      .toLowerCase()
+                      .contains(query),
+            )
+            .toList();
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
+          children: [
+            _pageTitle(
+              title: 'Learners',
+              subtitle: 'People enrolled in your courses.',
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              controller: _learnerSearchController,
+              textInputAction: TextInputAction.search,
+              onChanged: (value) => setState(() => _learnerQuery = value),
+              decoration: _inputDecoration(hint: 'Search learner or course')
+                  .copyWith(
+                    prefixIcon: const Icon(Icons.search, color: _muted),
+                    suffixIcon: _learnerQuery.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Clear search',
+                            onPressed: () {
+                              _learnerSearchController.clear();
+                              setState(() => _learnerQuery = '');
+                            },
+                            icon: const Icon(Icons.close, size: 18),
+                          ),
+                  ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '${learners.length} ${learners.length == 1 ? 'learner' : 'learners'}',
+              style: const TextStyle(
+                color: _muted,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-      ],
+            const SizedBox(height: 5),
+            for (final learner in learners)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: _LearnerCard(
+                  request: learner,
+                  onOpenMessages: () => setState(() => _selectedIndex = 3),
+                ),
+              ),
+            if (learners.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 36),
+                child: Center(
+                  child: Text(
+                    query.isEmpty
+                        ? 'Accepted course enrollments will appear here.'
+                        : 'No learners match "$_learnerQuery".',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: _muted, fontSize: 12),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
   // Shows the trainer's connection requests and conversations.
   Widget _buildMessages() {
-    return const ConnectionsPage();
+    return const ConnectionsPage(trainerView: true);
   }
 
   // Shows trainer details and account actions.
@@ -618,13 +662,6 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 12),
-        _SummaryBanner(
-          icon: Icons.workspace_premium_outlined,
-          title: 'Training impact',
-          subtitle:
-              '${_courses.length} courses · ${_learners.length} learners · ${_learners.where((learner) => learner.status == 'Certified').length} certified',
         ),
         const SizedBox(height: 18),
         SizedBox(
@@ -719,17 +756,22 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
     borderRadius: BorderRadius.circular(13),
   );
 
+  Widget _notice(String message) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: _cardDecoration(),
+    child: Text(message, style: const TextStyle(color: _muted, fontSize: 11)),
+  );
+
   // Switches to the course tab and opens its form.
   void _openCourseForm() {
     setState(() {
-      _selectedIndex = 2;
+      _selectedIndex = 1;
       _isCreatingCourse = true;
     });
   }
 
   Future<void> _saveCourse() async {
-    // Validate the course form and add its details to the course list.
-    if (!_courseFormKey.currentState!.validate()) return;
+    if (_isSavingCourse || !_courseFormKey.currentState!.validate()) return;
     final title = _courseTitleController.text.trim();
     final category = _courseCategoryController.text.trim();
     final duration = _courseDurationController.text.trim();
@@ -740,6 +782,7 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
       _showMessage('Enter a course fee in whole Bangladeshi taka.');
       return;
     }
+    setState(() => _isSavingCourse = true);
     try {
       await ConnectionService.publishPost(
         type: 'course',
@@ -749,23 +792,15 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
         priceBdt: feeBdt,
       );
     } catch (error) {
-      if (mounted) _showMessage(authErrorMessage(error));
+      if (mounted) {
+        setState(() => _isSavingCourse = false);
+        _showMessage(authErrorMessage(error));
+      }
       return;
     }
     if (!mounted) return;
     setState(() {
-      _courses.insert(
-        0,
-        _TrainingCourse(
-          title: title,
-          category: category,
-          duration: duration,
-          fee: fee,
-          learners: 0,
-          status: 'DRAFT',
-          icon: Icons.school_outlined,
-        ),
-      );
+      _isSavingCourse = false;
       _isCreatingCourse = false;
       _courseTitleController.clear();
       _courseCategoryController.clear();
@@ -776,7 +811,7 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
   }
 
   // Opens a summary of the selected course.
-  void _showCourse(_TrainingCourse course) {
+  void _showCourse(MarketplacePost course) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -797,98 +832,23 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
             ),
             const SizedBox(height: 10),
             Text(
-              '${course.category} · ${course.duration} · ${course.fee}',
+              '${course.category} · ${_formatCourseFee(course.priceBdt)}',
               style: const TextStyle(color: _muted, fontSize: 12),
             ),
             const SizedBox(height: 8),
             Text(
-              '${course.learners} learners · ${course.status}',
+              course.description,
               style: const TextStyle(color: _muted, fontSize: 12),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Listing status: ${course.status.toUpperCase()}',
+              style: const TextStyle(color: _muted, fontSize: 11),
+            ),
           ],
         ),
       ),
     );
-  }
-
-  // Opens learner progress and assessment actions.
-  void _showLearner(_Learner learner) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      backgroundColor: _background,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              learner.name,
-              style: const TextStyle(
-                color: _navy,
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              learner.course,
-              style: const TextStyle(color: _muted, fontSize: 11),
-            ),
-            const SizedBox(height: 13),
-            Text(
-              '${learner.progress}% course progress',
-              style: const TextStyle(
-                color: _navy,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 7),
-            LinearProgressIndicator(
-              value: learner.progress / 100,
-              minHeight: 7,
-              borderRadius: BorderRadius.circular(8),
-              color: _teal,
-              backgroundColor: const Color(0xFFDCE4EC),
-            ),
-            const SizedBox(height: 9),
-            Text(
-              'Status: ${learner.status}',
-              style: const TextStyle(color: _muted, fontSize: 11),
-            ),
-            if (learner.status == 'Ready for assessment' ||
-                learner.status == 'Assessment pending') ...[
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                height: 42,
-                child: FilledButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _markCertified(learner);
-                  },
-                  icon: const Icon(Icons.verified_outlined, size: 17),
-                  label: const Text('Mark assessment complete'),
-                  style: FilledButton.styleFrom(backgroundColor: _teal),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _markCertified(_Learner learner) {
-    // Update the learner's status after marking them as certified.
-    setState(() {
-      learner
-        ..status = 'Certified'
-        ..progress = 100;
-    });
-    _showMessage('${learner.name} marked as certified in this session.');
   }
 
   // Signs out the user or exits the sample account.
@@ -983,7 +943,7 @@ class _MetricCard extends StatelessWidget {
 class _CourseCard extends StatelessWidget {
   const _CourseCard({required this.course, required this.onTap});
 
-  final _TrainingCourse course;
+  final MarketplacePost course;
   final VoidCallback onTap;
 
   @override
@@ -1009,7 +969,11 @@ class _CourseCard extends StatelessWidget {
                   color: const Color(0xFFEAF7F6),
                   borderRadius: BorderRadius.circular(11),
                 ),
-                child: Icon(course.icon, color: _teal, size: 21),
+                child: const Icon(
+                  Icons.school_outlined,
+                  color: _teal,
+                  size: 21,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1028,7 +992,7 @@ class _CourseCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${course.category} · ${course.duration} · ${course.learners} learners',
+                      '${course.category} · ${course.description}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: _muted, fontSize: 9),
@@ -1041,7 +1005,7 @@ class _CourseCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    course.fee,
+                    _formatCourseFee(course.priceBdt),
                     style: const TextStyle(
                       color: _navy,
                       fontSize: 10,
@@ -1049,7 +1013,7 @@ class _CourseCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 5),
-                  _StatusBadge(label: course.status),
+                  _StatusBadge(label: course.status.toUpperCase()),
                 ],
               ),
             ],
@@ -1061,14 +1025,14 @@ class _CourseCard extends StatelessWidget {
 }
 
 class _LearnerCard extends StatelessWidget {
-  const _LearnerCard({required this.learner, required this.onTap});
+  const _LearnerCard({required this.request, required this.onOpenMessages});
 
-  final _Learner learner;
-  final VoidCallback onTap;
+  final ConnectionRequest request;
+  final VoidCallback onOpenMessages;
 
   @override
   Widget build(BuildContext context) {
-    final initials = learner.name
+    final initials = request.requesterName
         .split(RegExp(r'\s+'))
         .where((part) => part.isNotEmpty)
         .take(2)
@@ -1077,71 +1041,56 @@ class _LearnerCard extends StatelessWidget {
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(13),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(13),
-        child: Container(
-          padding: const EdgeInsets.all(11),
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFDCE4EC)),
-            borderRadius: BorderRadius.circular(13),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 19,
-                backgroundColor: const Color(0xFFEAF7F6),
-                child: Text(
-                  initials,
-                  style: const TextStyle(
-                    color: _teal,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
+      child: Container(
+        padding: const EdgeInsets.all(11),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFDCE4EC)),
+          borderRadius: BorderRadius.circular(13),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 19,
+              backgroundColor: const Color(0xFFEAF7F6),
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  color: _teal,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    request.requesterName,
+                    style: const TextStyle(
+                      color: _navy,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 3),
+                  Text(
+                    request.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: _muted, fontSize: 9),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      learner.name,
-                      style: const TextStyle(
-                        color: _navy,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      learner.course,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: _muted, fontSize: 9),
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(5),
-                      child: LinearProgressIndicator(
-                        value: learner.progress / 100,
-                        minHeight: 5,
-                        color: _teal,
-                        backgroundColor: const Color(0xFFE8EDF2),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${learner.progress}% complete',
-                      style: const TextStyle(color: _muted, fontSize: 8),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Flexible(child: _StatusBadge(label: learner.status)),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+            TextButton.icon(
+              onPressed: onOpenMessages,
+              icon: const Icon(Icons.chat_bubble_outline, size: 15),
+              label: const Text('Message'),
+            ),
+          ],
         ),
       ),
     );
@@ -1204,18 +1153,16 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final certified = label == 'Certified';
-    final needsAction =
-        label == 'Ready for assessment' || label == 'Assessment pending';
-    final color = certified
+    final isClosed = label == 'CLOSED';
+    final color = isClosed
+        ? _muted
+        : label == 'ENROLLED'
         ? const Color(0xFF008A68)
-        : needsAction
-        ? const Color(0xFFB36A00)
         : const Color(0xFF008C95);
-    final background = certified
+    final background = isClosed
+        ? const Color(0xFFF1F5F9)
+        : label == 'ENROLLED'
         ? const Color(0xFFEAFBF5)
-        : needsAction
-        ? const Color(0xFFFFF6E5)
         : const Color(0xFFEAF7F6);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
@@ -1236,36 +1183,5 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-class _TrainingCourse {
-  _TrainingCourse({
-    required this.title,
-    required this.category,
-    required this.duration,
-    required this.fee,
-    required this.learners,
-    required this.status,
-    required this.icon,
-  });
-
-  final String title;
-  final String category;
-  final String duration;
-  final String fee;
-  final int learners;
-  final String status;
-  final IconData icon;
-}
-
-class _Learner {
-  _Learner({
-    required this.name,
-    required this.course,
-    required this.progress,
-    required this.status,
-  });
-
-  final String name;
-  final String course;
-  int progress;
-  String status;
-}
+String _formatCourseFee(int? feeBdt) =>
+    feeBdt == null ? 'Fee not set' : '৳$feeBdt';

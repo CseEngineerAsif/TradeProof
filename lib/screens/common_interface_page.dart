@@ -291,7 +291,10 @@ class DashboardPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (showHeader) const _DashboardHeader(),
-              _HeroSection(trainerHome: trainerHome),
+              _HeroSection(
+                trainerHome: trainerHome,
+                employerHome: employerHome,
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(11, 14, 11, 8),
                 child: Column(
@@ -299,11 +302,20 @@ class DashboardPage extends StatelessWidget {
                     _SearchBar(
                       onSearch: onEmployerSearch,
                       trainerHome: trainerHome,
+                      employerHome: employerHome,
                       userHome: userHome,
                       onUserSearch: onUserSearch,
                     ),
                     const SizedBox(height: 14),
-                    const MarketplacePostsSection(),
+                    MarketplacePostsSection(
+                      type: trainerHome
+                          ? 'course'
+                          : employerHome
+                          ? null
+                          : null,
+                      employerView: employerHome,
+                      trainerView: trainerHome,
+                    ),
                     const SizedBox(height: 14),
                     if (userHome) ...[
                       _SectionCarousel<TradeJob>(
@@ -352,67 +364,15 @@ class DashboardPage extends StatelessWidget {
                         ),
                       ),
                     ] else if (trainerHome) ...[
-                      _SectionCarousel<TradeCourse>(
-                        title: 'Featured Training Courses',
-                        icon: Icons.school_outlined,
-                        items: _courses,
-                        height: 180,
-                        itemBuilder: (context, item, index) =>
-                            _CourseCard(course: item, index: index),
-                      ),
-                      const SizedBox(height: 12),
-                      _SectionCarousel<TradeTrainer>(
-                        title: 'Top Trainers & Assessors',
-                        icon: Icons.workspace_premium_outlined,
-                        items: _trainers,
-                        height: 124,
-                        itemBuilder: (context, item, index) =>
-                            _TrainerCard(trainer: item, index: index),
-                      ),
-                      const SizedBox(height: 12),
-                      _SectionCarousel<TradePerson>(
-                        title: 'Tradespeople to Train',
-                        icon: Icons.people_outline,
-                        items: _tradespeople,
-                        height: 148,
-                        itemBuilder: (context, item, index) =>
-                            _TradespersonCard(person: item, index: index),
-                      ),
+                      const SizedBox.shrink(),
                     ] else if (employerHome) ...[
                       _SectionCarousel<TradePerson>(
-                        title: 'Top Trade worker',
-                        icon: Icons.people_outline,
+                        title: 'Featured workers',
+                        icon: Icons.person_search_outlined,
                         items: _tradespeople,
                         height: 148,
                         itemBuilder: (context, item, index) =>
                             _TradespersonCard(person: item, index: index),
-                      ),
-                      const SizedBox(height: 12),
-                      _SectionCarousel<TradeCourse>(
-                        title: 'Top Trade Skill Courses',
-                        icon: Icons.school_outlined,
-                        items: _courses,
-                        height: 180,
-                        itemBuilder: (context, item, index) =>
-                            _CourseCard(course: item, index: index),
-                      ),
-                      const SizedBox(height: 12),
-                      _SectionCarousel<TradeTrainer>(
-                        title: 'Top Contractor',
-                        icon: Icons.school_outlined,
-                        items: _trainers,
-                        height: 124,
-                        itemBuilder: (context, item, index) =>
-                            _TrainerCard(trainer: item, index: index),
-                      ),
-                      const SizedBox(height: 12),
-                      _SectionCarousel<HiringEmployer>(
-                        title: 'Top Hiring Employers',
-                        icon: Icons.apartment_outlined,
-                        items: _employers,
-                        height: 160,
-                        itemBuilder: (context, item, index) =>
-                            _EmployerCard(employer: item, index: index),
                       ),
                     ] else ...[
                       _SectionCarousel<TradeJob>(
@@ -566,9 +526,10 @@ class _HeaderButton extends StatelessWidget {
 
 // Shows a welcome message over a background image.
 class _HeroSection extends StatelessWidget {
-  const _HeroSection({this.trainerHome = false});
+  const _HeroSection({this.trainerHome = false, this.employerHome = false});
 
   final bool trainerHome;
+  final bool employerHome;
 
   @override
   Widget build(BuildContext context) {
@@ -602,8 +563,19 @@ class _HeroSection extends StatelessWidget {
               children: [
                 Text.rich(
                   TextSpan(
-                    text: trainerHome ? 'Teach Skills. ' : 'Repair Your ',
-                    children: trainerHome
+                    text: employerHome
+                        ? 'Build Your '
+                        : trainerHome
+                        ? 'Teach Skills. '
+                        : 'Repair Your ',
+                    children: employerHome
+                        ? [
+                            const TextSpan(
+                              text: 'Team',
+                              style: TextStyle(color: Color(0xFFFFC400)),
+                            ),
+                          ]
+                        : trainerHome
                         ? [
                             const TextSpan(
                               text: 'Build Careers',
@@ -632,7 +604,9 @@ class _HeroSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 7),
                 Text(
-                  trainerHome
+                  employerHome
+                      ? 'Find skilled workers and manage hiring in one place.'
+                      : trainerHome
                       ? 'Practical training, competency assessments and verified credentials for the next generation of skilled tradespeople.'
                       : 'Instant technician dispatch, verified professionals & digital warranty guarantee across Dhaka.',
                   textAlign: TextAlign.center,
@@ -657,12 +631,14 @@ class _SearchBar extends StatefulWidget {
   const _SearchBar({
     this.onSearch,
     this.trainerHome = false,
+    this.employerHome = false,
     this.userHome = false,
     this.onUserSearch,
   });
 
   final ValueChanged<String>? onSearch;
   final bool trainerHome;
+  final bool employerHome;
   final bool userHome;
   final ValueChanged<String>? onUserSearch;
 
@@ -713,6 +689,8 @@ class _SearchBarState extends State<_SearchBar> {
                     ? 'Find a tradesperson or course...'
                     : widget.trainerHome
                     ? 'Search courses, skills or trainers...'
+                    : widget.employerHome
+                    ? 'Search workers, trades, or skills...'
                     : 'Search services or requests...',
                 hintStyle: TextStyle(fontSize: 9, color: Color(0xFF8997A9)),
                 isDense: true,
@@ -742,6 +720,8 @@ class _SearchBarState extends State<_SearchBar> {
                       ? 'All'
                       : widget.trainerHome
                       ? 'Training'
+                      : widget.employerHome
+                      ? 'Trades'
                       : 'All Categories',
                   style: const TextStyle(
                     fontSize: 8,

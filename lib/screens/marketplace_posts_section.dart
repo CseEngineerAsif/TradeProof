@@ -6,9 +6,16 @@ import 'course_checkout_page.dart';
 
 // Shows posts from connected TradeProof accounts that can be requested.
 class MarketplacePostsSection extends StatelessWidget {
-  const MarketplacePostsSection({super.key, this.type});
+  const MarketplacePostsSection({
+    super.key,
+    this.type,
+    this.employerView = false,
+    this.trainerView = false,
+  });
 
   final String? type;
+  final bool employerView;
+  final bool trainerView;
 
   static const _teal = Color(0xFF00999D);
 
@@ -17,7 +24,11 @@ class MarketplacePostsSection extends StatelessWidget {
     // Listen for published posts and show the correct loading or error state.
     if (!ConnectionService.isSignedIn) {
       return _notice(
-        'Sign in to browse posts from connected TradeProof accounts.',
+        employerView
+            ? 'Sign in to browse worker profiles and training courses.'
+            : trainerView
+            ? 'Sign in to browse published training courses.'
+            : 'Sign in to browse posts from connected TradeProof accounts.',
       );
     }
     return StreamBuilder<List<MarketplacePost>>(
@@ -36,23 +47,41 @@ class MarketplacePostsSection extends StatelessWidget {
         }
         final currentUid = ConnectionService.currentUserId;
         final posts = snapshot.data!;
-        final otherPosts = posts.where((post) => post.ownerUid != currentUid);
-        final ownPosts = posts.where((post) => post.ownerUid == currentUid);
+        final otherPosts = posts.where((post) {
+          if (post.ownerUid == currentUid) return false;
+          if (employerView) {
+            final role = post.ownerRole.toLowerCase();
+            return (post.type == 'service' && role.contains('trade')) ||
+                (post.type == 'course' && role.contains('trainer'));
+          }
+          return true;
+        });
+        final ownPosts = employerView
+            ? <MarketplacePost>[]
+            : posts.where((post) => post.ownerUid == currentUid);
         final visiblePosts = [...otherPosts, ...ownPosts];
         if (visiblePosts.isEmpty) {
           return _notice(
-            'No account posts yet. Published jobs, courses and services will appear here.',
+            employerView
+                ? 'No worker profiles or training courses are available yet.'
+                : trainerView
+                ? 'No training courses have been published yet.'
+                : 'No account posts yet. Published jobs, courses and services will appear here.',
           );
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Row(
+            Row(
               children: [
                 Icon(Icons.public_outlined, color: _teal, size: 15),
                 SizedBox(width: 6),
                 Text(
-                  'Posts from TradeProof accounts',
+                  employerView
+                      ? 'Workers & courses'
+                      : trainerView
+                      ? 'Published courses'
+                      : 'Posts from TradeProof accounts',
                   style: TextStyle(
                     color: Color(0xFF10243B),
                     fontSize: 13,
