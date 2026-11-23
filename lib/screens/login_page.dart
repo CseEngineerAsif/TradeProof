@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../services/connection_service.dart';
+import 'account_status_page.dart';
+import 'admin_dashboard_page.dart';
 import 'employer_dashboard_page.dart';
 import 'private_client_dashboard_page.dart';
 import 'trainer_dashboard_page.dart';
@@ -42,10 +44,20 @@ class _LoginPageState extends State<LoginPage> {
       );
       if (!mounted) return;
       final role = await AuthService.currentUserRole();
+      final isAdmin = await AuthService.currentUserIsAdmin();
+      final accountStatus = await AuthService.currentUserStatus();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(
           builder: (_) {
+            if (isAdmin) return const AdminDashboardPage();
+            if (accountStatus == 'application_draft' ||
+                accountStatus == 'pending_review' ||
+                accountStatus == 'interview_invited' ||
+                accountStatus == 'rejected' ||
+                accountStatus == 'suspended') {
+              return const AccountStatusPage();
+            }
             if (role == 'Employer / Contractor' || role == 'Employer') {
               return const EmployerDashboardPage();
             }
@@ -269,7 +281,7 @@ class _LoginPageState extends State<LoginPage> {
                       const Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'DEMO LOGIN AS',
+                          'QUICK DEMO · ADMIN USES SECURE LOGIN',
                           style: TextStyle(
                             color: Color(0xFF64748B),
                             fontSize: 9,
@@ -306,9 +318,19 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           const SizedBox(width: 6),
                           Expanded(
-                            child: _demoLoginButton(
-                              'User',
-                              Icons.person_search_outlined,
+                            child: SizedBox(
+                              height: 40,
+                              child: OutlinedButton.icon(
+                                onPressed: _isLoading ? null : _login,
+                                icon: const Icon(Icons.admin_panel_settings_outlined, size: 15),
+                                label: const Text('Admin Login', style: TextStyle(fontSize: 10)),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF008C96),
+                                  side: const BorderSide(color: Color(0xFF008C96)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                                ),
+                              ),
                             ),
                           ),
                         ],

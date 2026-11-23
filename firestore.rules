@@ -6,6 +6,27 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return signedIn()
+        && exists(
+          /databases/$(database)/documents/admins/$(request.auth.uid)
+        );
+    }
+
+    function isActiveAccount() {
+      return isAdmin()
+        || (signedIn()
+          && exists(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          )
+          && (!get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.keys().hasAny(['status'])
+            || get(
+              /databases/$(database)/documents/users/$(request.auth.uid)
+            ).data.status == 'active'));
+    }
+
     function isConnectionParticipant(requestId) {
       let connection = get(
         /databases/$(database)/documents/connection_requests/$(requestId)
@@ -45,17 +66,111 @@ service cloud.firestore {
               && data.paymentStatus == 'awaiting_bank_transfer')));
     }
 
+    match /admins/{userId} {
+      // Let a signed-in user check their own admin marker. Requiring isAdmin()
+      // here would make reading that marker depend on reading it first.
+      allow get: if signedIn() && request.auth.uid == userId;
+      allow list, create, update, delete: if false;
+    }
+
     match /users/{userId} {
-      allow read, create, update: if signedIn()
-        && request.auth.uid == userId;
+      allow get: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly([
+          'fullName', 'email', 'role', 'status', 'createdAt'
+        ])
+        && request.resource.data.role in [
+          'Tradesperson', 'Employer / Contractor', 'Trainer / Assessor'
+        ]
+        && request.resource.data.status == 'application_draft'
+        && request.resource.data.fullName is string
+        && request.resource.data.email is string;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status in [
+          'application_draft', 'pending_review', 'interview_invited',
+          'active', 'rejected', 'suspended'
+        ]
+        || (signedIn()
+          && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['fullName', 'email', 'phone', 'updatedAt']))
+        || (signedIn()
+          && request.auth.uid == userId
+          && resource.data.status == 'application_draft'
+          && request.resource.data.status == 'pending_review'
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'updatedAt'])
+          && getAfter(
+            /databases/$(database)/documents/account_applications/$(userId)
+          ).data.status == 'pending_review');
+      allow delete: if false;
+    }
+
+    match /account_applications/{userId} {
+      allow get: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly([
+          'fullName', 'email', 'role', 'details', 'status', 'cvPath',
+          'cvFileName', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.role in [
+          'Tradesperson', 'Employer / Contractor', 'Trainer / Assessor'
+        ]
+        && request.resource.data.role
+          == get(/databases/$(database)/documents/users/$(userId)).data.role
+        && get(/databases/$(database)/documents/users/$(userId)).data.status
+          == 'application_draft'
+        && request.resource.data.status == 'draft'
+        && request.resource.data.details is map;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            'status', 'adminNote', 'reviewedBy', 'reviewedAt', 'updatedAt',
+            'meetingDate', 'meetingLink', 'meetingMessage'
+          ])
+        && request.resource.data.status in [
+          'interview_invited', 'active', 'rejected', 'suspended'
+        ]
+        && request.resource.data.reviewedBy == request.auth.uid
+        || (isAdmin()
+          && request.resource.data.status in ['active', 'suspended']
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'updatedAt']))
+        || (signedIn()
+          && request.auth.uid == userId
+          && resource.data.status == 'draft'
+          && request.resource.data.status == 'draft'
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              'fullName', 'email', 'details', 'cvPath', 'cvFileName',
+              'createdAt', 'updatedAt'
+            ]))
+        || (signedIn()
+          && request.auth.uid == userId
+          && resource.data.status == 'draft'
+          && request.resource.data.status == 'pending_review'
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              'status', 'cvPath', 'cvFileName', 'submittedAt', 'updatedAt'
+            ])
+          && getAfter(
+            /databases/$(database)/documents/users/$(userId)
+          ).data.status == 'pending_review');
       allow delete: if false;
     }
 
     match /marketplace_posts/{postId} {
-      allow read: if signedIn()
-        && (resource.data.status == 'published'
-          || resource.data.ownerUid == request.auth.uid);
-      allow create: if signedIn()
+      allow read: if isAdmin()
+        || (isActiveAccount()
+          && (resource.data.status == 'published'
+            || resource.data.ownerUid == request.auth.uid));
+      allow create: if isActiveAccount()
         && request.resource.data.keys().hasOnly([
           'ownerUid', 'ownerName', 'ownerRole', 'type', 'title', 'category',
           'description', 'status', 'createdAt', 'priceBdt'
@@ -71,7 +186,7 @@ service cloud.firestore {
         && (request.resource.data.type != 'course'
           || (request.resource.data.priceBdt is int
             && request.resource.data.priceBdt > 0));
-      allow update: if signedIn()
+      allow update: if isActiveAccount()
         && resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerUid == resource.data.ownerUid
         && request.resource.data.status in ['published', 'closed'];
@@ -79,17 +194,19 @@ service cloud.firestore {
     }
 
     match /connection_requests/{requestId} {
-      allow get: if signedIn()
-        && ((!exists(
-          /databases/$(database)/documents/connection_requests/$(requestId)
-        )
-          && requestId.matches(request.auth.uid + '-.*'))
-          || resource.data.ownerUid == request.auth.uid
-          || resource.data.requesterUid == request.auth.uid);
-      allow list: if signedIn()
-        && (resource.data.ownerUid == request.auth.uid
-          || resource.data.requesterUid == request.auth.uid);
-      allow create: if signedIn()
+      allow get: if isAdmin()
+        || (isActiveAccount()
+          && ((!exists(
+            /databases/$(database)/documents/connection_requests/$(requestId)
+          )
+            && requestId.matches(request.auth.uid + '-.*'))
+            || resource.data.ownerUid == request.auth.uid
+            || resource.data.requesterUid == request.auth.uid));
+      allow list: if isAdmin()
+        || (isActiveAccount()
+          && (resource.data.ownerUid == request.auth.uid
+            || resource.data.requesterUid == request.auth.uid));
+      allow create: if isActiveAccount()
         && request.resource.data.keys().hasOnly([
           'postId', 'type', 'title', 'ownerUid', 'ownerName', 'requesterUid',
           'requesterName', 'status', 'createdAt', 'paymentMethod',
@@ -119,7 +236,7 @@ service cloud.firestore {
           /databases/$(database)/documents/marketplace_posts/$(request.resource.data.postId)
         ).data.ownerName == request.resource.data.ownerName
         && validCoursePayment(request.resource.data.postId);
-      allow update: if signedIn()
+      allow update: if isActiveAccount()
         && resource.data.ownerUid == request.auth.uid
         && ((resource.data.status == 'pending'
             && request.resource.data.status in ['accepted', 'rejected']
@@ -138,9 +255,11 @@ service cloud.firestore {
       allow delete: if false;
 
       match /messages/{messageId} {
-        allow read: if isConnectionParticipant(requestId)
+        allow read: if isActiveAccount()
+          && isConnectionParticipant(requestId)
           && connectionAccepted(requestId);
-        allow create: if isConnectionParticipant(requestId)
+        allow create: if isActiveAccount()
+          && isConnectionParticipant(requestId)
           && connectionAccepted(requestId)
           && request.resource.data.keys().hasOnly([
             'senderUid', 'senderName', 'text', 'createdAt'

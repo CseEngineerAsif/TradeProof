@@ -1,6 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
+import 'account_service.dart';
 import 'firebase_service.dart';
 
 // Handles sign-in, account creation, and password reset with Firebase.
@@ -33,47 +37,147 @@ class AuthService {
     return role is String ? role : null;
   }
 
-  // Creates the login account and saves its profile details.
-  static Future<UserCredential> createAccount({
+  static Future<String?> currentUserStatus() async {
+    await FirebaseService.initialize();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    final status = snapshot.data()?['status'];
+    return status is String ? status : null;
+  }
+
+  static Future<bool> currentUserIsAdmin() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    return AccountService.isAdmin(user.uid);
+  }
+
+  // Creates a login and submits its professional account application.
+  static Future<User> createAccount({
     required String fullName,
     required String email,
     required String password,
     required String role,
+    required Map<String, dynamic> applicationDetails,
+    Uint8List? cvBytes,
+    String? cvFileName,
+    String? existingCvPath,
   }) async {
     await FirebaseService.initialize();
-    final credential = await FirebaseAuth.instance
-        .createUserWithEmailAndPassword(
-          email: email.trim(),
-          password: password,
-        );
-    final user = credential.user;
-    if (user == null) {
+    if (!const {
+      'Tradesperson',
+      'Employer / Contractor',
+      'Trainer / Assessor',
+    }.contains(role)) {
       throw const AuthProfileException(
-        'The account was created, but its user details were not returned.',
+        'This account type cannot be created through public registration.',
       );
     }
 
+    final normalizedEmail = email.trim().toLowerCase();
+    final existingUser = FirebaseAuth.instance.currentUser;
+    final user = existingUser?.email?.toLowerCase() == normalizedEmail
+        ? existingUser!
+        : (await FirebaseAuth.instance.createUserWithEmailAndPassword(
+            email: normalizedEmail,
+            password: password,
+          )).user;
+    if (user == null) {
+      throw const AuthProfileException('Firebase did not return the new user.');
+    }
+
+    final firestore = FirebaseFirestore.instance;
+    final userRef = firestore.collection('users').doc(user.uid);
+    final applicationRef = firestore
+        .collection('account_applications')
+        .doc(user.uid);
     try {
-      // Save the profile details after Firebase creates the login account.
       await user.updateDisplayName(fullName.trim());
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+
+      final userSnapshot = await userRef.get();
+      if (!userSnapshot.exists) {
+        await userRef.set({
+          'fullName': fullName.trim(),
+          'email': normalizedEmail,
+          'role': role,
+          'status': 'application_draft',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } else if (userSnapshot.data()?['status'] != 'application_draft') {
+        throw const AuthProfileException(
+          'This login already has an account profile. Please sign in instead.',
+        );
+      } else {
+        await userRef.update({
+          'fullName': fullName.trim(),
+          'email': normalizedEmail,
+        });
+      }
+
+      await applicationRef.set({
         'fullName': fullName.trim(),
-        'email': email.trim(),
+        'email': normalizedEmail,
         'role': role,
+        'details': applicationDetails,
+        'status': 'draft',
+        'cvPath': existingCvPath,
+        'cvFileName': cvFileName,
         'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      var cvPath = existingCvPath;
+      if (cvBytes != null && cvFileName != null) {
+        final safeName = cvFileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+        cvPath =
+            'account_applications/${user.uid}/${DateTime.now().millisecondsSinceEpoch}_$safeName';
+        final extension = safeName.split('.').last.toLowerCase();
+        final contentType = switch (extension) {
+          'pdf' => 'application/pdf',
+          'doc' => 'application/msword',
+          'docx' =>
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          _ => 'application/octet-stream',
+        };
+        await FirebaseStorage.instance
+            .ref(cvPath)
+            .putData(cvBytes, SettableMetadata(contentType: contentType));
+        await applicationRef.update({
+          'cvPath': cvPath,
+          'cvFileName': cvFileName,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      final batch = firestore.batch();
+      batch.update(applicationRef, {
+        'status': 'pending_review',
+        'cvPath': cvPath,
+        'cvFileName': cvFileName,
+        'submittedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      batch.update(userRef, {
+        'status': 'pending_review',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      await batch.commit();
     } on FirebaseAuthException catch (error) {
       throw AuthProfileException(
-        'Your login account was created, but saving the profile failed '
+        'Your login was created, but the application could not be completed '
         '(${error.code}). You can sign in and complete setup later.',
       );
     } on FirebaseException catch (error) {
       throw AuthProfileException(
-        'Your login account was created, but saving the profile failed '
-        '(${error.code}). Check Firestore setup/rules, then sign in again.',
+        'Your login exists, but submitting the application failed '
+        '(${error.code}). Your draft is saved; retry the submission.',
       );
     }
-    return credential;
+    return user;
   }
 
   // Asks Firebase to email a password reset link.
@@ -118,6 +222,10 @@ String authErrorMessage(Object error) {
     };
   }
   if (error is FirebaseException) {
+    if (error.code == 'permission-denied') {
+      return 'Firebase permission denied. Check that Firestore rules are deployed '
+          'and that admins/{your Firebase Auth UID} exists.';
+    }
     return 'Firebase is not ready (${error.code}). Add the Android '
         'google-services.json file and check Firebase setup.';
   }

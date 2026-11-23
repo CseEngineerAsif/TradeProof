@@ -215,7 +215,14 @@ class ConnectionService {
 
   static void beginDemoSession(String role) {
     final normalizedRole = role.toLowerCase();
-    if (normalizedRole.contains('employer')) {
+    if (normalizedRole.contains('admin')) {
+      _demoAccount = const DemoAccount(
+        id: 'demo-admin',
+        name: 'Demo Administrator',
+        email: 'admin@demo.tradeproof',
+        role: 'Admin',
+      );
+    } else if (normalizedRole.contains('employer')) {
       _demoAccount = const DemoAccount(
         id: 'demo-employer',
         name: 'David Carter',

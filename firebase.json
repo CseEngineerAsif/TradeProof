@@ -1,1 +1,29 @@
-{"firestore":{"rules":"firestore.rules"},"flutter":{"platforms":{"android":{"default":{"projectId":"tradeproof-e5742","appId":"1:364096357810:android:77aed57f141d4207d790ab","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"tradeproof-e5742","configurations":{"android":"1:364096357810:android:77aed57f141d4207d790ab","ios":"1:364096357810:ios:abebc81fd5423756d790ab","web":"1:364096357810:web:10167ad973f89829d790ab"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "tradeproof-e5742",
+          "appId": "1:364096357810:android:77aed57f141d4207d790ab",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "tradeproof-e5742",
+          "configurations": {
+            "android": "1:364096357810:android:77aed57f141d4207d790ab",
+            "ios": "1:364096357810:ios:abebc81fd5423756d790ab",
+            "web": "1:364096357810:web:10167ad973f89829d790ab"
+          }
+        }
+      }
+    }
+  }
+}
