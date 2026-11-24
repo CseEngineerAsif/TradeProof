@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -203,6 +205,17 @@ class AccountService {
   static Future<String> getCvDownloadUrl(String path) async {
     await _requireAdmin();
     return FirebaseStorage.instance.ref(path).getDownloadURL();
+  }
+
+  static Future<Uint8List> getCvBytes(String path) async {
+    await _requireAdmin();
+    final bytes = await FirebaseStorage.instance
+        .ref(path)
+        .getData(10 * 1024 * 1024);
+    if (bytes == null) {
+      throw StateError('The applicant document is empty or unavailable.');
+    }
+    return bytes;
   }
 
   static Future<User> _requireAdmin() async {

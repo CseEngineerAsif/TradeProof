@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../services/connection_service.dart';
+import 'account_profile_tab.dart';
 import 'common_interface_page.dart';
 import 'connections_page.dart';
 import 'credentials_page.dart';
@@ -51,7 +52,11 @@ class _AuthenticatedShellState extends State<AuthenticatedShell> {
   Widget build(BuildContext context) {
     // Keep each tab in one place and show the selected tab.
     final pages = <Widget>[
-      const DashboardPage(showHeader: false, showTradespeople: false),
+      const DashboardPage(
+        showHeader: false,
+        showTradespeople: false,
+        showMarketplacePosts: false,
+      ),
       PortfolioPage(key: _portfolioKey),
       const CredentialsPage(),
       WorkerDashboardPage(
@@ -76,14 +81,11 @@ class _AuthenticatedShellState extends State<AuthenticatedShell> {
             },
       ),
       const ConnectionsPage(),
-      _ProfileTab(
+      AccountProfileTab(
+        role: widget.demoRole ?? 'Tradesperson',
         isDemo: widget.isDemo,
-        demoRole: widget.demoRole,
-        onSwitchMarketplace: () {
-          Navigator.of(
-            context,
-          ).pushNamedAndRemoveUntil('/dashboard', (_) => false);
-        },
+        onSwitchMarketplace: () => Navigator.of(context)
+            .pushNamedAndRemoveUntil('/dashboard', (_) => false),
       ),
     ];
 

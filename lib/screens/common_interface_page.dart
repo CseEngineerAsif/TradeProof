@@ -253,6 +253,7 @@ class DashboardPage extends StatelessWidget {
     super.key,
     this.showHeader = true,
     this.showTradespeople = true,
+    this.showMarketplacePosts = true,
     this.employerHome = false,
     this.trainerHome = false,
     this.userHome = false,
@@ -265,6 +266,7 @@ class DashboardPage extends StatelessWidget {
 
   final bool showHeader;
   final bool showTradespeople;
+  final bool showMarketplacePosts;
   final bool employerHome;
   final bool trainerHome;
   final bool userHome;
@@ -307,16 +309,19 @@ class DashboardPage extends StatelessWidget {
                       onUserSearch: onUserSearch,
                     ),
                     const SizedBox(height: 14),
-                    MarketplacePostsSection(
-                      type: trainerHome
-                          ? 'course'
-                          : employerHome
-                          ? null
-                          : null,
-                      employerView: employerHome,
-                      trainerView: trainerHome,
-                    ),
-                    const SizedBox(height: 14),
+                    if (showMarketplacePosts) ...[
+                      MarketplacePostsSection(
+                        type: trainerHome
+                            ? 'course'
+                            : employerHome
+                            ? null
+                            : null,
+                        employerView: employerHome,
+                        trainerView: trainerHome,
+                      ),
+                      const SizedBox(height: 14),
+                    ] else
+                      const SizedBox(height: 14),
                     if (userHome) ...[
                       _SectionCarousel<TradeJob>(
                         title: 'Featured Service Requests',
@@ -349,12 +354,13 @@ class DashboardPage extends StatelessWidget {
                             ),
                       ),
                       const SizedBox(height: 12),
-                      _SectionCarousel<TradeCourse>(
+                      _marketplaceCarousel<TradeCourse>(
+                        type: 'course',
                         title: 'Skill Courses',
                         icon: Icons.school_outlined,
-                        items: _courses,
                         height: 180,
-                        itemBuilder: (context, item, index) => _CourseCard(
+                        fallbackItems: _courses,
+                        fallbackBuilder: (context, item, index) => _CourseCard(
                           course: item,
                           index: index,
                           onEnroll: () {
@@ -364,7 +370,24 @@ class DashboardPage extends StatelessWidget {
                         ),
                       ),
                     ] else if (trainerHome) ...[
-                      const SizedBox.shrink(),
+                      _marketplaceCarousel<TradeCourse>(
+                        type: 'course',
+                        title: 'Top Skills',
+                        icon: Icons.school_outlined,
+                        height: 180,
+                        fallbackItems: _courses,
+                        fallbackBuilder: (context, item, index) =>
+                            _CourseCard(course: item, index: index),
+                      ),
+                      const SizedBox(height: 12),
+                      _SectionCarousel<TradeTrainer>(
+                        title: 'Top Trainers',
+                        icon: Icons.people_outline,
+                        items: _trainers,
+                        height: 124,
+                        itemBuilder: (context, item, index) =>
+                            _TrainerCard(trainer: item, index: index),
+                      ),
                     ] else if (employerHome) ...[
                       _SectionCarousel<TradePerson>(
                         title: 'Featured workers',
@@ -375,21 +398,24 @@ class DashboardPage extends StatelessWidget {
                             _TradespersonCard(person: item, index: index),
                       ),
                     ] else ...[
-                      _SectionCarousel<TradeJob>(
+                      _marketplaceCarousel<TradeJob>(
+                        type: 'job',
                         title: 'Posted Trade Work',
                         icon: Icons.business_center_outlined,
-                        items: _jobs,
                         height: 134,
-                        itemBuilder: (context, item, index) =>
+                        liveHeight: 170,
+                        fallbackItems: _jobs,
+                        fallbackBuilder: (context, item, index) =>
                             _JobCard(job: item, index: index),
                       ),
                       const SizedBox(height: 12),
-                      _SectionCarousel<TradeCourse>(
+                      _marketplaceCarousel<TradeCourse>(
+                        type: 'course',
                         title: 'Top Trade Skill Courses',
                         icon: Icons.school_outlined,
-                        items: _courses,
                         height: 180,
-                        itemBuilder: (context, item, index) =>
+                        fallbackItems: _courses,
+                        fallbackBuilder: (context, item, index) =>
                             _CourseCard(course: item, index: index),
                       ),
                       const SizedBox(height: 12),
@@ -432,6 +458,68 @@ class DashboardPage extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _marketplaceCarousel<T>({
+  required String type,
+  required String title,
+  required IconData icon,
+  required double height,
+  double? liveHeight,
+  required List<T> fallbackItems,
+  required Widget Function(BuildContext, T, int) fallbackBuilder,
+}) {
+  _SectionCarousel<T> fallbackCarousel() => _SectionCarousel<T>(
+    title: title,
+    icon: icon,
+    items: fallbackItems,
+    height: height,
+    itemBuilder: fallbackBuilder,
+  );
+
+  if (!ConnectionService.isSignedIn) return fallbackCarousel();
+
+  return StreamBuilder<List<MarketplacePost>>(
+    stream: ConnectionService.watchPosts(type: type),
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: const Color(0xFFDCE4EC)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            'Could not load $title: ${snapshot.error}',
+            style: const TextStyle(color: Color(0xFFB42318), fontSize: 10),
+          ),
+        );
+      }
+
+      final posts = snapshot.data;
+      if (posts == null || posts.isEmpty) return fallbackCarousel();
+
+      final latestFirst = List<MarketplacePost>.of(posts)
+        ..sort(
+          (a, b) => (b.createdAt ?? DateTime(0)).compareTo(
+            a.createdAt ?? DateTime(0),
+          ),
+        );
+
+      return _SectionCarousel<MarketplacePost>(
+        title: title,
+        icon: icon,
+        items: latestFirst,
+        height: liveHeight ?? height,
+        itemBuilder: (context, post, index) => MarketplacePostCard(
+          post: post,
+          currentUid: ConnectionService.currentUserId,
+        ),
+      );
+    },
+  );
 }
 
 // Shows the TradeProof brand and the login button at the top.

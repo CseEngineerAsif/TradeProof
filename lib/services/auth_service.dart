@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -66,6 +67,7 @@ class AuthService {
     Uint8List? cvBytes,
     String? cvFileName,
     String? existingCvPath,
+    void Function(String stage, double? uploadProgress)? onProgress,
   }) async {
     await FirebaseService.initialize();
     if (!const {
@@ -96,9 +98,14 @@ class AuthService {
         .collection('account_applications')
         .doc(user.uid);
     try {
-      await user.updateDisplayName(fullName.trim());
+      onProgress?.call('Preparing your account', null);
 
-      final userSnapshot = await userRef.get();
+      final parallelResults = await Future.wait<Object?>([
+        userRef.get(),
+        user.updateDisplayName(fullName.trim()).then<Object?>((_) => null),
+      ]);
+      final userSnapshot =
+          parallelResults.first as DocumentSnapshot<Map<String, dynamic>>;
       if (!userSnapshot.exists) {
         await userRef.set({
           'fullName': fullName.trim(),
@@ -118,6 +125,7 @@ class AuthService {
         });
       }
 
+      onProgress?.call('Saving your application', null);
       await applicationRef.set({
         'fullName': fullName.trim(),
         'email': normalizedEmail,
@@ -143,16 +151,32 @@ class AuthService {
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           _ => 'application/octet-stream',
         };
-        await FirebaseStorage.instance
+        onProgress?.call('Uploading your CV', 0);
+        final uploadTask = FirebaseStorage.instance
             .ref(cvPath)
             .putData(cvBytes, SettableMetadata(contentType: contentType));
-        await applicationRef.update({
-          'cvPath': cvPath,
-          'cvFileName': cvFileName,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        final progressSubscription = uploadTask.snapshotEvents.listen((snapshot) {
+          final progress = snapshot.totalBytes == 0
+              ? null
+              : snapshot.bytesTransferred / snapshot.totalBytes;
+          onProgress?.call('Uploading your CV', progress);
+        }, onError: (_) {});
+        try {
+          // A missing/unprovisioned bucket can leave the SDK retrying without
+          // ever advancing the transfer. Fail clearly instead of spinning forever.
+          await uploadTask.timeout(const Duration(seconds: 60));
+        } on TimeoutException {
+          await uploadTask.cancel();
+          throw const AuthProfileException(
+            'CV upload timed out. In Firebase Console, finish Storage setup '
+            'and create the default bucket, then deploy Storage rules and retry.',
+          );
+        } finally {
+          await progressSubscription.cancel();
+        }
       }
 
+      onProgress?.call('Sending application for review', null);
       final batch = firestore.batch();
       batch.update(applicationRef, {
         'status': 'pending_review',
@@ -174,7 +198,7 @@ class AuthService {
     } on FirebaseException catch (error) {
       throw AuthProfileException(
         'Your login exists, but submitting the application failed '
-        '(${error.code}). Your draft is saved; retry the submission.',
+        '(${error.code}). ${error.message ?? 'Your saved draft can be retried.'}',
       );
     }
     return user;

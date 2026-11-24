@@ -1,10 +1,15 @@
+import 'dart:typed_data';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:pdfrx/pdfrx.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/account_service.dart';
 import '../services/auth_service.dart';
 import '../services/connection_service.dart';
+import 'account_profile_tab.dart';
+import 'common_interface_page.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key, this.isDemo = false});
@@ -54,8 +59,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         }
 
         final pages = <Widget>[
+          const DashboardPage(showHeader: false),
           _AdminOverviewTab(
-            onViewApplications: () => setState(() => _selectedIndex = 1),
+            onViewApplications: () => setState(() => _selectedIndex = 2),
           ),
           const _ApplicationsTab(),
           const _AccountsTab(),
@@ -71,6 +77,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             onDestinationSelected: (index) =>
                 setState(() => _selectedIndex = index),
             destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: 'Home',
+              ),
               NavigationDestination(
                 icon: Icon(Icons.space_dashboard_outlined),
                 selectedIcon: Icon(Icons.space_dashboard),
@@ -247,6 +258,7 @@ class _DemoAdminDashboardState extends State<_DemoAdminDashboard> {
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
+      const DashboardPage(showHeader: false),
       _buildOverview(),
       _buildApplications(),
       _buildAccounts(),
@@ -262,6 +274,11 @@ class _DemoAdminDashboardState extends State<_DemoAdminDashboard> {
         onDestinationSelected: (index) =>
             setState(() => _selectedIndex = index),
         destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
           NavigationDestination(
             icon: Icon(Icons.space_dashboard_outlined),
             selectedIcon: Icon(Icons.space_dashboard),
@@ -341,7 +358,7 @@ class _DemoAdminDashboardState extends State<_DemoAdminDashboard> {
               ),
             ),
             TextButton(
-              onPressed: () => setState(() => _selectedIndex = 1),
+              onPressed: () => setState(() => _selectedIndex = 2),
               child: const Text('View all'),
             ),
           ],
@@ -467,39 +484,11 @@ class _DemoAdminDashboardState extends State<_DemoAdminDashboard> {
     );
   }
 
-  Widget _buildProfile() {
-    return ListView(
-      padding: const EdgeInsets.all(18),
-      children: [
-        _pageHeading('Demo administrator', 'Local sample account.'),
-        const SizedBox(height: 16),
-        const Card(
-          color: Colors.white,
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Color(0xFFE5F5F3),
-              child: Icon(Icons.admin_panel_settings, color: Color(0xFF008C96)),
-            ),
-            title: Text('Demo Administrator'),
-            subtitle: Text('admin@demo.tradeproof'),
-          ),
-        ),
-        const SizedBox(height: 12),
-        const _EmptyPanel(
-          icon: Icons.shield_outlined,
-          title: 'Demo mode only',
-          message:
-              'Demo actions update sample data in memory and cannot view or change real users, applications, or uploaded CVs.',
-        ),
-        const SizedBox(height: 18),
-        OutlinedButton.icon(
-          onPressed: _leaveDemo,
-          icon: const Icon(Icons.logout),
-          label: const Text('Exit demo'),
-        ),
-      ],
-    );
-  }
+  Widget _buildProfile() => AccountProfileTab(
+    role: 'Admin',
+    isDemo: true,
+    onSignOut: (_) async => _leaveDemo(),
+  );
 
   Future<void> _showApplication(_DemoApplication application) {
     final canReview =
@@ -843,9 +832,10 @@ class _AdminOverviewTab extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
               children: [
                 _pageHeading(
-                  'Admin overview',
-                  'Review professional applications and manage account access.',
+                  'Welcome to TradeProof Admin',
+                  'Your operations home for applicant reviews, account access and the marketplace.',
                 ),
+                const SizedBox(height: 12),
                 const SizedBox(height: 16),
                 GridView.count(
                   crossAxisCount: MediaQuery.sizeOf(context).width > 650
@@ -1104,51 +1094,10 @@ class _AdminProfileTab extends StatelessWidget {
   const _AdminProfileTab();
 
   @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    return ListView(
-      padding: const EdgeInsets.all(18),
-      children: [
-        _pageHeading('Administrator profile', 'TradeProof operations access.'),
-        const SizedBox(height: 16),
-        Card(
-          color: Colors.white,
-          child: ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: Color(0xFFE5F5F3),
-              child: Icon(Icons.admin_panel_settings, color: Color(0xFF008C96)),
-            ),
-            title: Text(user?.displayName ?? 'Administrator'),
-            subtitle: Text(user?.email ?? ''),
-          ),
-        ),
-        const SizedBox(height: 12),
-        const _EmptyPanel(
-          icon: Icons.shield_outlined,
-          title: 'Protected administrator access',
-          message:
-              'Only accounts provisioned by a trusted administrator can use this portal.',
-        ),
-        const SizedBox(height: 18),
-        OutlinedButton.icon(
-          onPressed: () async {
-            try {
-              await AuthService.signOut();
-              if (!context.mounted) return;
-              Navigator.of(
-                context,
-              ).pushNamedAndRemoveUntil('/dashboard', (_) => false);
-            } catch (error) {
-              if (!context.mounted) return;
-              _showError(context, 'Could not sign out: $error');
-            }
-          },
-          icon: const Icon(Icons.logout),
-          label: const Text('Sign out'),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => const AccountProfileTab(
+    role: 'Admin',
+    isDemo: false,
+  );
 }
 
 class _ApplicationReviewPage extends StatefulWidget {
@@ -1164,6 +1113,10 @@ class _ApplicationReviewPageState extends State<_ApplicationReviewPage> {
   bool _isLoading = false;
 
   AccountApplication get application => widget.application;
+  bool get _hasPdfPreview =>
+      (application.cvFileName ?? application.cvPath ?? '')
+          .toLowerCase()
+          .endsWith('.pdf');
 
   @override
   Widget build(BuildContext context) {
@@ -1214,9 +1167,15 @@ class _ApplicationReviewPageState extends State<_ApplicationReviewPage> {
                       title: Text(application.cvFileName!),
                       subtitle: const Text('Private applicant document'),
                       trailing: IconButton(
-                        tooltip: 'Open document',
+                        tooltip: _hasPdfPreview
+                            ? 'Preview document'
+                            : 'Open document',
                         onPressed: _isLoading ? null : _openCv,
-                        icon: const Icon(Icons.open_in_new),
+                        icon: Icon(
+                          _hasPdfPreview
+                              ? Icons.preview_outlined
+                              : Icons.open_in_new,
+                        ),
                       ),
                     ),
                   ],
@@ -1333,7 +1292,21 @@ class _ApplicationReviewPageState extends State<_ApplicationReviewPage> {
 
   Future<void> _openCv() async {
     final path = application.cvPath;
-    if (path == null) return;
+    if (path == null || path.isEmpty) {
+      _showError(context, 'No uploaded applicant document is available.');
+      return;
+    }
+    final fileName = application.cvFileName ?? path.split('/').last;
+    if (_hasPdfPreview) {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              _ApplicantPdfPreviewPage(path: path, fileName: fileName),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final url = await AccountService.getCvDownloadUrl(path);
@@ -1345,7 +1318,6 @@ class _ApplicationReviewPageState extends State<_ApplicationReviewPage> {
         throw StateError('No application could open this document.');
       }
     } catch (error) {
-      if (!mounted) return;
       if (!mounted) return;
       _showError(context, 'Could not open the applicant document: $error');
     } finally {
@@ -1497,6 +1469,86 @@ class _ApplicationReviewPageState extends State<_ApplicationReviewPage> {
     messageController.dispose();
     return result;
   }
+}
+
+class _ApplicantPdfPreviewPage extends StatefulWidget {
+  const _ApplicantPdfPreviewPage({
+    required this.path,
+    required this.fileName,
+  });
+
+  final String path;
+  final String fileName;
+
+  @override
+  State<_ApplicantPdfPreviewPage> createState() =>
+      _ApplicantPdfPreviewPageState();
+}
+
+class _ApplicantPdfPreviewPageState extends State<_ApplicantPdfPreviewPage> {
+  late Future<Uint8List> _document;
+
+  @override
+  void initState() {
+    super.initState();
+    _document = AccountService.getCvBytes(widget.path);
+  }
+
+  void _retry() {
+    setState(() => _document = AccountService.getCvBytes(widget.path));
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: Text(widget.fileName),
+      backgroundColor: Colors.white,
+      foregroundColor: const Color(0xFF10243B),
+    ),
+    body: FutureBuilder<Uint8List>(
+      future: _document,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: Color(0xFFB42318),
+                    size: 36,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Could not load CV preview: ${snapshot.error}',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _retry,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Try again'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return PdfViewer.data(
+          snapshot.data!,
+          sourceName: widget.path,
+          params: const PdfViewerParams(
+            backgroundColor: Color(0xFFF4F6FA),
+          ),
+        );
+      },
+    ),
+  );
 }
 
 class _ApplicationCard extends StatelessWidget {

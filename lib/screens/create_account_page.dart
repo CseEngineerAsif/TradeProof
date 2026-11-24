@@ -56,6 +56,8 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   bool _acceptedTerms = false;
   bool _obscurePassword = true;
   bool _isLoading = false;
+  String _submissionStage = 'Preparing your application';
+  double? _cvUploadProgress;
   PlatformFile? _cvFile;
 
   @override
@@ -142,7 +144,11 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
 
   Future<void> _submitApplication() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _submissionStage = 'Preparing your application';
+      _cvUploadProgress = null;
+    });
     try {
       await AuthService.createAccount(
         fullName: _nameController.text,
@@ -153,6 +159,13 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
         cvBytes: _cvFile == null ? null : await _cvFile!.readAsBytes(),
         cvFileName: _cvFile?.name ?? widget.draft?.cvFileName,
         existingCvPath: widget.draft?.cvPath,
+        onProgress: (stage, progress) {
+          if (!mounted) return;
+          setState(() {
+            _submissionStage = stage;
+            _cvUploadProgress = progress;
+          });
+        },
       );
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
@@ -166,7 +179,12 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
     } catch (error) {
       _showMessage(authErrorMessage(error));
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _cvUploadProgress = null;
+        });
+      }
     }
   }
 
@@ -506,19 +524,47 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
         ),
       ),
       const SizedBox(height: 16),
+      if (_isLoading) ...[
+        Text(
+          _cvUploadProgress == null
+              ? _submissionStage
+              : '$_submissionStage · ${(_cvUploadProgress! * 100).round()}%',
+          style: const TextStyle(
+            color: Color(0xFF008C96),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 7),
+        LinearProgressIndicator(
+          value: _cvUploadProgress,
+          minHeight: 5,
+          borderRadius: BorderRadius.circular(8),
+          backgroundColor: const Color(0xFFE0E6EE),
+          color: const Color(0xFF008C96),
+        ),
+        const SizedBox(height: 12),
+      ],
       SizedBox(
         height: 48,
         child: FilledButton(
           onPressed: _isLoading ? null : _submitApplication,
           style: _buttonStyle(),
           child: _isLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
+              ? const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    Text('Submitting…'),
+                  ],
                 )
               : const Text('Submit application for review'),
         ),

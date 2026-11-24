@@ -94,7 +94,7 @@ class MarketplacePostsSection extends StatelessWidget {
             for (final post in visiblePosts)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: _MarketplacePostCard(post: post, currentUid: currentUid),
+                child: MarketplacePostCard(post: post, currentUid: currentUid),
               ),
           ],
         );
@@ -118,17 +118,21 @@ class MarketplacePostsSection extends StatelessWidget {
 
 // Each card shows one post and its request button.
 // Shows one marketplace post and lets the user send a request.
-class _MarketplacePostCard extends StatefulWidget {
-  const _MarketplacePostCard({required this.post, required this.currentUid});
+class MarketplacePostCard extends StatefulWidget {
+  const MarketplacePostCard({
+    super.key,
+    required this.post,
+    required this.currentUid,
+  });
 
   final MarketplacePost post;
   final String? currentUid;
 
   @override
-  State<_MarketplacePostCard> createState() => _MarketplacePostCardState();
+  State<MarketplacePostCard> createState() => _MarketplacePostCardState();
 }
 
-class _MarketplacePostCardState extends State<_MarketplacePostCard> {
+class _MarketplacePostCardState extends State<MarketplacePostCard> {
   bool _sending = false;
 
   // Sends a request to the owner of this marketplace post.

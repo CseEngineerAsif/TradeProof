@@ -1,8 +1,8 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../services/connection_service.dart';
+import 'account_profile_tab.dart';
 import 'common_interface_page.dart';
 import 'connections_page.dart';
 
@@ -585,102 +585,9 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
 
   // Shows trainer details and account actions.
   Widget _buildProfile() {
-    final user = widget.isDemo ? null : FirebaseAuth.instance.currentUser;
-    final displayName = user?.displayName?.trim().isNotEmpty == true
-        ? user!.displayName!.trim()
-        : widget.isDemo
-        ? ConnectionService.currentUserName ?? 'Trainer Demo'
-        : 'Trainer Account';
-    final email =
-        user?.email ??
-        (widget.isDemo
-            ? ConnectionService.currentUserEmail ?? 'Demo trainer account'
-            : '');
-
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
-      children: [
-        _pageTitle(
-          title: 'Trainer Profile',
-          subtitle: 'Your account and teaching overview.',
-        ),
-        const SizedBox(height: 15),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: _cardDecoration(),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 27,
-                backgroundColor: const Color(0xFFE0F4F2),
-                child: Text(
-                  displayName.substring(0, 1).toUpperCase(),
-                  style: const TextStyle(
-                    color: _teal,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName,
-                      style: const TextStyle(
-                        color: _navy,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (email.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        email,
-                        style: const TextStyle(color: _muted, fontSize: 10),
-                      ),
-                    ],
-                    const SizedBox(height: 7),
-                    const Row(
-                      children: [
-                        Icon(Icons.verified, color: _teal, size: 14),
-                        SizedBox(width: 4),
-                        Text(
-                          'Trainer / Assessor',
-                          style: TextStyle(
-                            color: _teal,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 18),
-        SizedBox(
-          height: 45,
-          child: OutlinedButton.icon(
-            onPressed: () => _signOut(context),
-            icon: const Icon(Icons.logout, size: 17),
-            label: const Text('Sign out'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _navy,
-              side: const BorderSide(color: _line),
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ),
-        ),
-      ],
+    return AccountProfileTab(
+      role: 'Trainer / Assessor',
+      isDemo: widget.isDemo,
     );
   }
 
@@ -849,26 +756,6 @@ class _TrainerDashboardPageState extends State<TrainerDashboardPage> {
         ),
       ),
     );
-  }
-
-  // Signs out the user or exits the sample account.
-  Future<void> _signOut(BuildContext context) async {
-    if (widget.isDemo) {
-      ConnectionService.endDemoSession();
-      Navigator.of(context).pushNamedAndRemoveUntil('/dashboard', (_) => false);
-      return;
-    }
-
-    try {
-      await AuthService.signOut();
-      if (context.mounted) {
-        Navigator.of(
-          context,
-        ).pushNamedAndRemoveUntil('/dashboard', (_) => false);
-      }
-    } catch (error) {
-      if (context.mounted) _showMessage(authErrorMessage(error));
-    }
   }
 
   void _showMessage(String message) {
